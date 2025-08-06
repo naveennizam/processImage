@@ -1,0 +1,10 @@
+This is based on React with Node.
+
+1. Start with root directory **npm run start** it start to a react.
+2. First type on terminal **cd api** , it goes on api folder then run **npm start**. It's start node. 
+
+React : port 3000
+NOde : port 8080
+
+DEPLOY ON RENDER 
+1. first make file server.js
