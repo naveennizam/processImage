@@ -1,8 +1,7 @@
 /* eslint-disable */
 
 
-import { useState, useEffect ,useRef} from "react";
-
+import { useState, useEffect, useRef } from "react";
 import { initCanvasWithFile, clearCanvas, initCanvasWithBlob } from './canvasUtils/canvasHandler';
 
 
@@ -12,14 +11,14 @@ function RemoveBg() {
   const [resultUrl, setResultUrl] = useState(null);
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
-
+  const [blobsUrl, setBlobsUrl] = useState(null);
 
   const handleFileChange = (e) => {
-
+    document.querySelector("#download").style.display = 'none'
     const allowedTypes = ["image/jpg", "image/jpeg", "image/png", "image/webp"];
     const file = e.target.files[0]; // Take the first file (can add loop for multi)
-// console.log(e.target.files[0].type,allowedTypes.includes(e.target.files[0].type),e.target.files[0])
-    if ( !allowedTypes.includes(e.target.files[0].type)) {
+    // console.log(e.target.files[0].type,allowedTypes.includes(e.target.files[0].type),e.target.files[0])
+    if (!allowedTypes.includes(e.target.files[0].type)) {
       fileInputRef.current.value = '';
       alert("Only PNG, JPG, JPEG, WEBP allowed")
 
@@ -43,7 +42,7 @@ function RemoveBg() {
     fileInputRef.current.value = '';
     document.querySelector("#clearCanvas").style.display = 'none'
     document.querySelector("#removeBg").style.display = 'none'
-
+    document.querySelector("#download").style.display = 'none'
 
   };
 
@@ -68,80 +67,112 @@ function RemoveBg() {
       },
       body: formData,
     };
-    const response = await fetch(`https://server-11ms.onrender.com/remove-bg`, request);
+    const response = await fetch(
+      `https://server-11ms.onrender.com/remove-bg`, request)
 
-    let res = await response.blob();
-    let blobUrl = URL.createObjectURL(res)
-    setLoading(false)
 
-    initCanvasWithBlob(blobUrl)
-    document.querySelector("#clearCanvas").disabled = false;
+    if (!response.ok) { alert("'Network response was not ok.'") }
+    else {
+      let res = await response.blob();
+      let blobUrl = URL.createObjectURL(res)
+      setLoading(false)
+
+      initCanvasWithBlob(blobUrl)
+      setBlobsUrl(blobUrl)
+      document.querySelector("#clearCanvas").disabled = false;
+      document.querySelector("#download").disabled = false;
+      document.querySelector("#download").style.display = 'block'
+    }
   };
 
+  const Download = () => {
+
+    const a = document.createElement('a');
+    a.href = blobsUrl;
+
+    a.download = image?.name ?? 'compressed-image.jpg'; // Or original file name if you have it
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(blobsUrl);
+
+  }
   return (
-    <div className="row">
-      <div className="mx-auto col-10 col-md-8 col-lg-6 my-5">
-        <h2>Remove image background</h2>
-        <p>Automatically detect and remove the background from images to isolate the main subject. Useful for product photos, profile pictures, and design assets.</p>
-        <div class="mb-3 col-lg-8">
-          <input class="form-control" id="formFile" type="file" accept="image/png, image/avif, image/jpeg, image/jpg, image/webpg" onChange={handleFileChange} ref={fileInputRef} />
+    <div className="container my-5">
+      <div className="row justify-content-center">
+        <div className="col-12 col-md-10 col-lg-8 text-center">
+
+          <h2 className="mb-3 fw-bold">Remove Image Background</h2>
+          <p className="text-muted mb-4">
+            Automatically detect and remove the background from images to isolate the main subject.
+            Useful for product photos, profile pictures, and design assets.
+          </p>
+
+          <div className="mb-4">
+            <input
+              className="form-control"
+              id="formFile"
+              type="file"
+              accept="image/png, image/avif, image/jpeg, image/jpg, image/webp"
+              onChange={handleFileChange}
+              ref={fileInputRef}
+            />
+          </div>
+
+          <div className="position-relative d-inline-block mx-auto shadow rounded overflow-hidden" style={{ maxWidth: '100%' }}>
+            <canvas
+              ref={canvasRef}
+              width={500}
+              height={500}
+              className="img-fluid border rounded"
+              id="serverImage"
+              style={{ maxWidth: '100%', height: 'auto' }}
+            />
+
+            {loading && (
+              <div className="position-absolute top-0 start-0 w-100 h-100 d-flex flex-wrap justify-content-center align-items-center bg-white bg-opacity-75">
+                {['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'primary', 'dark'].map((color, i) => (
+                  <div key={i} className={`spinner-grow text-${color} m-1`} role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4 d-flex justify-content-center flex-wrap gap-3">
+            <button
+              onClick={handleClear}
+              id="clearCanvas"
+              style={{ display: 'none' }}
+              type="button"
+              className="btn btn-outline-primary"
+            >
+              Clear Canvas
+            </button>
+
+            <button
+              onClick={removeBackground}
+              id="removeBg"
+              style={{ display: 'none' }}
+              type="button"
+              className="btn btn-success"
+            >
+              Remove Background
+            </button>
+
+            <button
+              onClick={Download}
+              id="download"
+              style={{ display: 'none' }}
+              type="button"
+              className="btn btn-dark"
+            >
+              Download
+            </button>
+          </div>
+
         </div>
-
-        {/* <input type="file" accept="image/*" onChange={handleFileChange} ref={fileInputRef}  /> */}
-        <br />
-
-
-        <div style={{ position: "relative", display: "inline-block" }}>
-          <canvas ref={canvasRef} width={500} height={500} style={{ border: '1px solid #ccc' }} id='serverImage' />
-
-          {loading && <>
-            <div style={{
-              position: "absolute",
-              top: 0, left: 0,
-              width: "100%",
-              height: "100%",
-              background: "rgba(255,255,255,0.6)",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-            }}>
-              <div class="spinner-grow text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-              </div>
-              <div class="spinner-grow text-secondary" role="status">
-                <span class="visually-hidden">Loading...</span>
-              </div>
-              <div class="spinner-grow text-success" role="status">
-                <span class="visually-hidden">Loading...</span>
-              </div>
-              <div class="spinner-grow text-danger" role="status">
-                <span class="visually-hidden">Loading...</span>
-              </div>
-              <div class="spinner-grow text-warning" role="status">
-                <span class="visually-hidden">Loading...</span>
-              </div>
-              <div class="spinner-grow text-info" role="status">
-                <span class="visually-hidden">Loading...</span>
-              </div>
-              <div class="spinner-grow text-light" role="status">
-                <span class="visually-hidden">Loading...</span>
-              </div>
-              <div class="spinner-grow text-dark" role="status">
-                <span class="visually-hidden">Loading...</span>
-              </div>
-            </div> </>}
-
-        </div>
-
-        {/* <canvas ref={canvasRef} width={500} height={500} style={{ border: '1px solid #ccc' }} id='serverImage' /> */}
-        <br />
-        <div style={{ display: 'flex' }} class="mb-3 col-lg-8 ">
-          <button onClick={handleClear} id="clearCanvas" style={{ display: 'none' }} type="button" class="btn btn-primary mx-2">Clear Canvas</button>
-          <button onClick={removeBackground} id="removeBg" style={{ display: 'none' }} type="button" class="btn btn-success mx-2">Remove background</button>
-        </div>
-
-
-
       </div>
     </div>
 
@@ -150,3 +181,4 @@ function RemoveBg() {
 }
 export default RemoveBg;
 /* eslint-disable */
+
