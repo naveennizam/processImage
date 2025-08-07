@@ -51,10 +51,7 @@ function Compress() {
       body: formData,
     };
 
-    const res = await fetch(
-      `${process.env.RENDER_PROD}/profile`,
-      request
-    );
+    const res = await fetch(`https://server-11ms.onrender.com/profile`,request );
 
   // console.log("FDFFFDDDDDDDDD",res.status,res.status == 200)
    // const uploadedImage = await res.json();
