@@ -34,7 +34,7 @@ function Compress() {
 
   const handleSubmission = async (event) => {
     event.preventDefault();
-    console.log("result.filed.length", result.filed.length);
+    console.log("result.filed.length", result);
 
     var formData = new FormData();
 
@@ -51,117 +51,79 @@ function Compress() {
       body: formData,
     };
 
-    const res = await fetch(`https://server-11ms.onrender.com/profile`,request );
+    await fetch(
+      `https://server-11ms.onrender.com/profile`,request
+    ) .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok.');
+      }
+      return response.blob();
+    })
+    .then(blob => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
 
-  // console.log("FDFFFDDDDDDDDD",res.status,res.status == 200)
-   // const uploadedImage = await res.json();
-  
-    if (res.status == 200) {
-      alert("Hurray! Downloaded");
-    //  if(uploadedImage.response ==  "Hurray! Downloaded") location.reload()
+      a.download = result.filed[0]?.name ??  'compressed-image.jpg'; // Or original file name if you have it
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
       document.getElementById("formFileLg").value = "";
       setResult([]);
-      location.reload()
-    } else {
-      alert("Something Wrong");
-    }
+    })
+    .catch(error => {
+      console.error('Download failed:', error);
+    });
   };
 
 
   useEffect(()=>{},[result])
-  // useEffect(() => {
-  //   let data = async () => {
-  //     (function (t, e, n, r) {
-  //       function a() {
-  //         return e && e.now ? e.now() : null;
-  //       }
-  //       if (!n.version) {
-  //         n._events = [];
-  //         n._errors = [];
-  //         n._metadata = {};
-  //         n._urlGroup = null;
-  //         window.RM = n;
-  //         n.install = function (e) {
-  //           n._options = e;
-  //           var a = t.createElement("script");
-  //           a.async = true;
-  //           a.crossOrigin = "anonymous";
-  //           a.src = r;
-  //           var o = t.getElementsByTagName("script")[0];
-  //           o.parentNode.insertBefore(a, o);
-  //         };
-  //         n.identify = function (t, e) {
-  //           n._userId = t;
-  //           n._identifyOptions = e;
-  //         };
-  //         n.sendEvent = function (t, e) {
-  //           n._events.push({ eventName: t, metadata: e, time: a() });
-  //         };
-  //         n.setUrlGroup = function (t) {
-  //           n._urlGroup = t;
-  //         };
-  //         n.track = function (t, e) {
-  //           n._errors.push({ error: t, metadata: e, time: a() });
-  //         };
-  //         n.addMetadata = function (t) {
-  //           n._metadata = Object.assign(n._metadata, t);
-  //         };
-  //       }
-  //     })(
-  //       document,
-  //       window.performance,
-  //       window.RM || {},
-  //       "https://cdn.requestmetrics.com/agent/current/rm.js"
-  //     );
-  //     RM.install({
-  //       token: "t9ac5ua:y2hw6hb",
-  //     });
-  //   };
-
-  //   data();
-  // }, [result]);
-
-
-
+ 
 
 
   return (
     <>
-      <div className="row">
-        <div className="mx-auto col-10 col-md-8 col-lg-6 my-5">
-          <form
-            action="/profile"
-            encType="multipart/form-data"
-            method="post"
-            onSubmit={handleSubmission}
-          >
-            <label htmlFor="formFileLg" className="form-label">
-            {/* Compress the images through TINIFY */}
-              <h2>Compress the images size</h2>
-              <p>Smart WebP, PNG and JPEG Compression for Faster Websites</p>
-            </label>
-            <input
-              className="form-control form-control mt-5"
-              style={{ width: 500 }}
-              id="formFileLg"
-              // multiple
-              ref={fileInputRef}
-              type="file"
-              accept="image/png, image/avif, image/jpeg, image/jpg image/webpg"
-              onChange={changeHandler}
-            />
-{loading &&
-            <button
-              type="submit"
-              className="btn btn-outline-primary  mx-5 col-6 my-5 "
-              disabled={result.length == []}
-            >
-              Download
-            </button>
-}
-          </form>
+     <div className="container">
+  <div className="row justify-content-center">
+    <div className="col-12 col-md-10 col-lg-6 my-5">
+      <form
+        action="/profile"
+        encType="multipart/form-data"
+        method="post"
+        onSubmit={handleSubmission}
+        className="text-center"
+      >
+        <div className="mb-4">
+          <label htmlFor="formFileLg" className="form-label">
+            <h2 className="fw-bold">Compress the image size</h2>
+            <p className="text-muted">Smart WebP, PNG and JPEG compression for faster websites</p>
+          </label>
+          <input
+            className="form-control mt-3 mx-auto"
+            style={{ maxWidth: "100%", width: "500px" }}
+            id="formFileLg"
+            ref={fileInputRef}
+            type="file"
+            accept="image/png, image/avif, image/jpeg, image/jpg, image/webp"
+            onChange={changeHandler}
+          />
         </div>
-      </div>
+
+        {loading && (
+          <button
+            type="submit"
+            className="btn btn-outline-primary col-8 col-md-6 my-3"
+            disabled={result.length === 0}
+          >
+            Download
+          </button>
+        )}
+      </form>
+    </div>
+  </div>
+</div>
+
     </>
   );
 }
