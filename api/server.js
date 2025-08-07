@@ -24,31 +24,39 @@ const upload = multer({ dest: "uploads/" });
 
 app.post(
   "/profile",
-  upload.fields([{ name: "file", maxCount: [] }]),
+  upload.fields([{ name: "file", maxCount: 1 }]),
   async function (req, res, next) {
-
     try {
-      // const allowedTypes = ["image/jpg", "image/jpeg", "image/png", "image/webp"];
-      const file = req.files.file?.[0]; // Take the first file (can add loop for multi)
+      const file = req.files.file?.[0];
+      if (!file) return res.status(400).send("No file uploaded.");
 
       const originalname = file.originalname;
       const inputPath = file.path;
-      const outputPath = path.join(downloaded, originalname);
+      const outputPath = path.join(__dirname, "compressed", originalname);
 
-      // ✅ Compress and wait
+      // Make sure "compressed" folder exists
+      fs.mkdirSync(path.join(__dirname, "compressed"), { recursive: true });
+
+      // ✅ Compress image
       await tinify.fromFile(inputPath).toFile(outputPath);
-      fs.unlinkSync(inputPath); // cleanup
 
-      // ✅ Force browser to download the file
-      return res.download(outputPath, originalname, (err) => {
+      // Delete original upload
+      fs.unlinkSync(inputPath);
+
+      // ✅ Send compressed image to user's browser
+      res.download(outputPath, originalname, (err) => {
         if (err) {
           console.error("Download error:", err);
-          return res.status(500).send({ response: "Download failed" });
+          return res.status(500).send("Download failed.");
         }
+
+        // Optional: Clean up after download
+        fs.unlink(outputPath, () => {});
       });
+
     } catch (e) {
       console.error("Compression error:", e);
-      return res.status(500).send({ response: "Error please try again." });
+      res.status(500).send("Server error.");
     }
   }
 );
