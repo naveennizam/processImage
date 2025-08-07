@@ -1,5 +1,5 @@
 // src/components/Home.js
-
+import '../styles.css';
 const HomePage = () => {
   return (
     <div className="container py-5">
