@@ -82,9 +82,9 @@ app.post('/remove-bg', upload.single('image'), async (req, res) => {
     // })
 
    const resultBlob = await removeBackground(blobs);
-  // console.log("resultBlob", resultBlob.type)
+   console.log("resultBlob", resultBlob.type)
  const resultBuffer = Buffer.from(await resultBlob.arrayBuffer());
-//  console.log("resultBuffer", resultBuffer)
+  console.log("resultBuffer", resultBuffer)
 
      fs.unlinkSync(req.file.path); // cleanup
 
