@@ -4,7 +4,6 @@
 import { useState, useEffect, useRef } from "react";
 import { initCanvasWithFile, clearCanvas, initCanvasWithBlob } from './canvasUtils/canvasHandler';
 
-
 function RemoveBg() {
   const canvasRef = useRef(null);
   const [image, setImage] = useState(null);
