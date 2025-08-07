@@ -22,38 +22,73 @@ tinify.key = process.env.TINIFY_KEY;
 const downloaded = path.join(os.homedir(), 'Downloads');
 const upload = multer({ dest: "uploads/" });
 
+// app.post(
+//   "/profile",
+//   upload.fields([{ name: "file", maxCount: [] }]),
+//   async function (req, res, next) {
+
+//     try {
+//       // const allowedTypes = ["image/jpg", "image/jpeg", "image/png", "image/webp"];
+//       const file = req.files.file?.[0]; // Take the first file (can add loop for multi)
+
+//       const originalname = file.originalname;
+//       const inputPath = file.path;
+//       const outputPath = path.join(downloaded, originalname);
+
+//       // ✅ Compress and wait
+//       await tinify.fromFile(inputPath).toFile(outputPath);
+//       fs.unlinkSync(inputPath); // cleanup
+
+//       // ✅ Force browser to download the file
+//       return res.download(outputPath, originalname, (err) => {
+//         if (err) {
+//           console.error("Download error:", err);
+//           return res.status(500).send({ response: "Download failed" });
+//         }
+//       });
+//     } catch (e) {
+//       console.error("Compression error:", e);
+//       return res.status(500).send({ response: "Error please try again." });
+//     }
+//   }
+// );
+
+
 app.post(
   "/profile",
-  upload.fields([{ name: "file", maxCount: 1 }]),
-  async function (req, res, next) {
+  upload.single("file"),
+  async function (req, res) {
     try {
-      const file = req.files.file?.[0];
+      const file = req.file;
       if (!file) return res.status(400).send("No file uploaded.");
 
       const originalname = file.originalname;
       const inputPath = file.path;
-      const outputPath = path.join(__dirname, "compressed", originalname);
+      const compressedDir = path.join(__dirname, "compressed");
+      const outputPath = path.join(compressedDir, originalname);
 
-      // Make sure "compressed" folder exists
-      fs.mkdirSync(path.join(__dirname, "compressed"), { recursive: true });
+      // Ensure "compressed" folder exists
+      fs.mkdirSync(compressedDir, { recursive: true });
 
-      // ✅ Compress image
+      // ✅ Compress the image
       await tinify.fromFile(inputPath).toFile(outputPath);
 
-      // Delete original upload
-      fs.unlinkSync(inputPath);
+      // ✅ Read compressed image into buffer
+      const compressedBuffer = fs.readFileSync(outputPath);
 
-      // ✅ Send compressed image to user's browser
-      res.download(outputPath, originalname, (err) => {
-        if (err) {
-          console.error("Download error:", err);
-          return res.status(500).send("Download failed.");
-        }
+      // ✅ Set download headers
+      res.setHeader("Content-Type", "application/octet-stream");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${originalname}"`
+      );
 
-        // Optional: Clean up after download
-        fs.unlink(outputPath, () => {});
-      });
+      // ✅ Send the buffer
+      res.status(200).send(compressedBuffer);
 
+      // ✅ Clean up temp files (non-blocking)
+      fs.unlink(inputPath, () => {});
+      fs.unlink(outputPath, () => {});
     } catch (e) {
       console.error("Compression error:", e);
       res.status(500).send("Server error.");
@@ -61,48 +96,76 @@ app.post(
   }
 );
 
-
 app.post('/remove-bg', upload.single('image'), async (req, res) => {
-  console.log("image", req.file)
   try {
-    const inputBuffer = fs.readFileSync(req.file.path);
-    console.log("inputBuffer", inputBuffer)
-    // const allowedTypes = ["image/jpg", "image/jpeg", "image/png", "image/webp"];
-    // const file = req.files.image?.[0]; // Take the first file (can add loop for multi)
-    // console.log("file",file)
-    // if (!file || !allowedTypes.includes(file.mimetype)) {
-    //   return res.status(400).send({ response: "Only PNG, JPG, JPEG, WEBP allowed" });
-    // }
-    // const originalname = file.originalname;
-    //       const inputPath = file.path;
-    //       const outputPath = path.join(downloaded, originalname);
-    //   //console.log("GDFsdfsdffs",originalname,inputPath,outputPath,downloaded)
+    if (!req.file) {
+      return res.status(400).send({ response: "No file uploaded" });
+    }
 
-    const blobs = new Blob([new Uint8Array(inputBuffer)], { type: 'image/png' });
+  //  const inputBuffer = fs.readFileSync(req.file.path); // read uploaded image
 
- //   const blobs = new Blob([new Uint8Array(inputBuffer)], { type: 'image/jpeg' });
-     console.log('Blob', blobs)
 
-    // const resultBlob = await  removeBackground(inputBuffer).then((blob) => {
-    //   // The result is a blob encoded as PNG. It can be converted to an URL to be used as HTMLImage.src
-    //   const url = URL.createObjectURL(blob);
-    //   console.log("URL",url)
-    // })
+    const resultBlob = await removeBackground(req.file.path); // ⬅️ ArrayBuffer, not Blob // returns Blob
 
-   const resultBlob = await removeBackground(blobs);
-   console.log("resultBlob", resultBlob.type)
- const resultBuffer = Buffer.from(await resultBlob.arrayBuffer());
-  console.log("resultBuffer", resultBuffer)
+const arrayBuffer = await resultBlob.arrayBuffer();                // convert to ArrayBuffer
+const buffer = Buffer.from(arrayBuffer);                           // convert to Node.js Buffer
 
-     fs.unlinkSync(req.file.path); // cleanup
 
-    res.setHeader('Content-Type',  resultBlob.type);
-    res.status(200).send(resultBuffer);
+    // console.log("resultBlob",resultBlob,buffer)
+    // const resultBuffer = Buffer.from(await resultBlob.arrayBuffer());
+
+    // fs.unlinkSync(req.file.path); // clean up uploaded image
+
+    res.setHeader('Content-Type', resultBlob.type || 'image/png');
+    return res.status(200).send(buffer); // send back processed image
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Failed to process image');
+    console.error("Error:", err);
+    return res.status(500).send('Failed to process image');
   }
 });
+
+// app.post('/remove-bg', upload.single('image'), async (req, res) => {
+//   console.log("image", req.file)
+//   try {
+//     const inputBuffer = fs.readFileSync(req.file.path);
+//     console.log("inputBuffer", inputBuffer)
+//     // const allowedTypes = ["image/jpg", "image/jpeg", "image/png", "image/webp"];
+//     // const file = req.files.image?.[0]; // Take the first file (can add loop for multi)
+//     // console.log("file",file)
+//     // if (!file || !allowedTypes.includes(file.mimetype)) {
+//     //   return res.status(400).send({ response: "Only PNG, JPG, JPEG, WEBP allowed" });
+//     // }
+//     // const originalname = file.originalname;
+//     //       const inputPath = file.path;
+//     //       const outputPath = path.join(downloaded, originalname);
+//     //   //console.log("GDFsdfsdffs",originalname,inputPath,outputPath,downloaded)
+
+//   //  const blobs = new Blob([new Uint8Array(inputBuffer)], { type: 'image/png' });
+
+//  //   const blobs = new Blob([new Uint8Array(inputBuffer)], { type: 'image/jpeg' });
+//   //   console.log('Blob', blobs)
+
+//     // const resultBlob = await  removeBackground(inputBuffer).then((blob) => {
+//     //   // The result is a blob encoded as PNG. It can be converted to an URL to be used as HTMLImage.src
+//     //   const url = URL.createObjectURL(blob);
+//     //   console.log("URL",url)
+//     // })
+//     const resultBlob = await removeBackground(inputBuffer); // ✅ works if it's a Buffer
+
+//   // const resultBlob = await removeBackground(blobs);
+//    console.log("resultBlob", resultBlob.type)
+//  const resultBuffer = Buffer.from(await resultBlob.arrayBuffer());
+//  console.log("resultBuffer", resultBuffer)
+
+//      fs.unlinkSync(req.file.path); // cleanup
+
+//     res.setHeader('Content-Type',  resultBlob.type);
+//     res.status(200).send(resultBuffer);
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).send('Failed to process image');
+//   }
+// });
 
 
 
