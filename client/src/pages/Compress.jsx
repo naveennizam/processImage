@@ -2,6 +2,7 @@
 
 import { useState, useEffect,useRef } from "react";
 
+
 function Compress() {
   let [result, setResult] = useState([]);
     const [loading, setLoading] = useState(false);
